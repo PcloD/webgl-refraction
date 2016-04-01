@@ -1,0 +1,15 @@
+Setup
+
+npm install
+
+Build
+
+npm run build
+
+Hot Reload server
+
+npm run serve
+
+Static dev server
+
+npm run serve-static
