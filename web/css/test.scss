@@ -1,0 +1,13 @@
+html { font-size: 100px;}
+body {
+	color: blue;
+	/*background: brown;*/
+
+	div {
+		font-size: 0.2rem;
+		transform: scale(1);
+		width: 2rem;
+		height: 2rem;
+		background: url('../images/img.jpg');
+	}
+}
