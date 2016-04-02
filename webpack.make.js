@@ -3,11 +3,16 @@ var cssnano = require('cssnano');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var CleanWebpackPlugin = require('clean-webpack-plugin');
 
+var babelQuery = {
+    presets: ['react', 'es2015'],
+    cacheDirectory: true,
+    plugins: ['transform-runtime']
+};
+
 var config = {
     entry:  './web/js',
     output: {
         path:     './web/build/',
-        publicPath : '/',
         filename: 'js/[name]-[hash].js',
     },
     devtool: 'source-map',
@@ -29,11 +34,7 @@ var config = {
             	test: /.jsx?$/,
 				exclude: /(node_modules|bower_components)/,
 				loader: 'babel',
-				query: {
-					presets: ['react', 'es2015'],
-					cacheDirectory: true,
-					plugins: ['transform-runtime']
-			    }				
+				query: babelQuery
             }    		
     	]
     },
@@ -58,6 +59,8 @@ module.exports = function(options) {
             var ExtractTextPlugin = require("extract-text-webpack-plugin");
             var webpack = require('webpack');
 
+            config.output.publicPath = '/';
+
             config.module.loaders.unshift({
                 test: /\.s?css$/,
                 loader: ExtractTextPlugin.extract("style", ["css?sourceMap", "postcss?sourceMap", "sass?sourceMap"])
@@ -72,10 +75,14 @@ module.exports = function(options) {
             }));
             break;
         case 'HOT':
+            config.output.publicPath = 'http://localhost:8080/';
+
             config.module.loaders.unshift({
                 test: /\.s?css$/,
                 loader: "style?sourceMap!css?sourceMap!postcss?sourceMap!sass?sourceMap"
             });
+
+            babelQuery.presets.push('react-hmre');
             break;
     }
 
