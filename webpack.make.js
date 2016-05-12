@@ -1,5 +1,4 @@
 var autoprefixer = require('autoprefixer');
-var cssnano = require('cssnano');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var CleanWebpackPlugin = require('clean-webpack-plugin');
 
@@ -35,11 +34,11 @@ var config = {
 				exclude: /(node_modules|bower_components)/,
 				loader: 'babel',
 				query: babelQuery
-            }    		
+            }
     	]
     },
     postcss: function () {
-        return [autoprefixer, cssnano];
+        return [autoprefixer];
     },
 	plugins: [
         new HtmlWebpackPlugin({
