@@ -36,7 +36,7 @@
   },
   "scripts": {
     "build": "webpack",
-    "serve": "webpack-dev-server --content-base web/build --inline --hot --config=webpack.hot.config.js",
+    "serve": "webpack-dev-server --port 9999 --content-base web/build --inline --hot --config=webpack.hot.config.js",
     "serve-static": "webpack-dev-server --content-base web/build"
   },
   "author": "Roll",

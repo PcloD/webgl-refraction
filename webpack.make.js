@@ -74,7 +74,7 @@ module.exports = function(options) {
             }));
             break;
         case 'HOT':
-            config.output.publicPath = 'http://localhost:8080/';
+            config.output.publicPath = 'http://localhost:9999/';
 
             config.module.loaders.unshift({
                 test: /\.s?css$/,
