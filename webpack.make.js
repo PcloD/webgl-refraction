@@ -58,7 +58,7 @@ module.exports = function(options) {
             var ExtractTextPlugin = require("extract-text-webpack-plugin");
             var webpack = require('webpack');
 
-            config.output.publicPath = '/';
+            config.output.publicPath = './';
 
             config.module.loaders.unshift({
                 test: /\.s?css$/,
