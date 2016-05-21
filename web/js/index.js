@@ -37,8 +37,6 @@ class App {
         this.scene.add(cube);
 
 
-        this.renderTarget = new THREE.WebGLRenderTarget(512, 512);
-
         /*
         const light = new THREE.DirectionalLight(0xffffff);
 
@@ -109,6 +107,7 @@ class App {
             intensity: 0.45,
             scale: 0.03,
             opacity: 0.9,
+            anisotropy: false,
         };
 
         const gui = new dat.GUI();
@@ -137,8 +136,12 @@ class App {
                 child.material.uniforms.vScale.value = new THREE.Vector2(v, v);
             }
         });
-
-
+        const anisotropy = gui.add(this.params, 'anisotropy');
+        anisotropy.onChange((v) => {
+            for (const child of this.star.children) {
+                child.renderTarget.texture.anisotropy =  v ? 16 : 1;
+            }
+        });
     }
 
     bindEvents() {
@@ -151,8 +154,8 @@ class App {
         for (let i = 0; i < 10; i++) {
             const particle = new Particle();
             particle.rotation.set(Math.PI * Math.random(), Math.PI * Math.random(), Math.PI * Math.random());
-            //particle.camera.position.copy(obj.position);
-            //this.scene.add(new THREE.CameraHelper(particle.camera));
+            // particle.camera.position.copy(obj.position);
+            // this.scene.add(new THREE.CameraHelper(particle.camera));
             obj.add(particle);
         }
 
@@ -173,51 +176,45 @@ class App {
         this.star.rotation.x += Math.PI / 360;
 
         const children = this.star.children.slice();
-        children.sort((a, b) => a.z - b.z);
+        children.sort((a, b) => {
+            b.translateY(250);
+            const pb = b.getWorldPosition();
+            b.translateY(-250);
+            pb.project(this.camera);
+            a.translateY(250);
+            const pa = a.getWorldPosition();
+            a.translateY(-250);
+            pa.project(this.camera);
+            return pb.z - pa.z;
+        });
 
-        for (const child of this.star.children) {
+        for (const child of children) {
             child.visible = false;
-            this.renderer.render(this.scene, this.camera, this.renderTarget);
-            child.material.uniforms.tex_scene.value = this.renderTarget;
+        }
+
+        for (const child of children) {
+            this.renderer.render(this.scene, this.camera, child.renderTarget);
             child.visible = true;
         }
-
-        /*
-        for (const child of this.star.children) {
-            child.material.uniforms.distort.value = 0;
-        }
-
-        for (const child of this.star.children) {
-            child.visible = false;
-            this.textureCamera.position.copy(this.star.position);
-            var position = new THREE.Vector3();
-            var scale = new THREE.Vector3();
-            var quaternion = new THREE.Quaternion();
-            var vector = new THREE.Vector3(0, 1, 0);
-            child.updateMatrixWorld();
-            child.matrixWorld.decompose(position, quaternion, scale);
-
-            vector.applyQuaternion(quaternion);
-            //this.textureCamera.lookAt(new THREE.Vector3(0, 0, -100));
-            this.textureCamera.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI);
-            this.textureCamera.translateOnAxis(vector, 250);
-            //
-
-            this.renderer.render(this.scene, this.textureCamera, child.renderTarget);
-            child.visible = true;
-        }
-
-        for (const child of this.star.children) {
-            child.material.uniforms.distort.value = 0.5;
-        }
-        */
     }
 
     render() {
         stats.begin();
 
         this.update();
+
+        //this.renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+        //this.renderer.setScissorTest(false);
+
         this.renderer.render(this.scene, this.camera);
+
+        //const ratio = window.innerWidth/window.innerHeight;
+
+        //this.renderer.setViewport(window.innerWidth * 0.8, window.innerWidth * 0.2 / ratio, window.innerWidth * 0.2, window.innerWidth * 0.2 / ratio);
+        //this.renderer.setScissor(window.innerWidth * 0.8, window.innerWidth * 0.2 / ratio, window.innerWidth * 0.2, window.innerWidth * 0.2 / ratio);
+        //this.renderer.setScissorTest(true);
+
+        //this.renderer.render(this.scene, this.camera);
 
         stats.end();
 
