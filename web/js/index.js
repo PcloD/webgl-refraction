@@ -17,21 +17,23 @@ class App {
     constructor() {
         this.scene = new THREE.Scene();
 
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+        this.camera = new THREE.PerspectiveCamera(75,
+            window.innerWidth / window.innerHeight, 1, 10000);
         this.camera.position.z = 1000;
 
-        //this.textureCamera = new THREE.PerspectiveCamera(20, 1, 0.1, 500);
+        this.stars = [];
 
-        //this.scene.add(new THREE.CameraHelper(this.textureCamera));
-        //this.scene.add(this.textureCamera);
-
-        this.star = this.buildStar();
-
-        this.scene.add(this.star);
-
+        for (let i = 0, l = 4; i < l; i++) {
+            this.stars[i] = this.buildStar();
+            this.scene.add(this.stars[i]);
+        }
 
         const geometry = new THREE.BoxBufferGeometry(5000, 5000, 5000);
-        this.material = new THREE.MeshBasicMaterial({ /*color: 0x111166,*/ side: THREE.BackSide, map: new THREE.TextureLoader().load(scene) });
+        this.material = new THREE.MeshBasicMaterial({
+            side: THREE.BackSide,
+            map: new THREE.TextureLoader().load(scene),
+            precision: 'highp',
+        });
         const cube = new THREE.Mesh(geometry, this.material);
         cube.position.set(0, 0, 0);
         this.scene.add(cube);
@@ -103,43 +105,92 @@ class App {
         this.render();
 
         this.params = {
-            color: 0xFF4400,
+            color1: 0xFF4400,
+            color2: 0xFF4400,
+            color3: 0xFF4400,
+            color4: 0xFF4400,
             intensity: 0.45,
             scale: 0.03,
             opacity: 0.9,
-            anisotropy: false,
+            fresnel: 1,
+            fresnelBias: 0.2,
+            fresnelPow: 5,
         };
 
         const gui = new dat.GUI();
-        const color = gui.addColor(this.params, 'color');
+        const color = gui.addColor(this.params, 'color1');
         color.onChange((v) => {
-            for (const child of this.star.children) {
+            for (const child of this.stars[0].children) {
                 child.material.uniforms.emissive.value = new THREE.Color(v);
             }
         });
+        const color2 = gui.addColor(this.params, 'color2');
+        color2.onChange((v) => {
+            for (const child of this.stars[1].children) {
+                child.material.uniforms.emissive.value = new THREE.Color(v);
+            }
+        });
+        const color3 = gui.addColor(this.params, 'color3');
+        color3.onChange((v) => {
+            for (const child of this.stars[2].children) {
+                child.material.uniforms.emissive.value = new THREE.Color(v);
+            }
+        });
+        const color4 = gui.addColor(this.params, 'color4');
+        color4.onChange((v) => {
+            for (const child of this.stars[3].children) {
+                child.material.uniforms.emissive.value = new THREE.Color(v);
+            }
+        });
+
         const r = gui.addFolder('refraction');
+        r.open();
         const refraction = r.add(this.params, 'intensity', 0, 1);
         refraction.onChange((v) => {
-            for (const child of this.star.children) {
-                child.material.uniforms.refraction.value = v;
+            for (const star of this.stars) {
+                for (const child of star.children) {
+                    child.material.uniforms.refraction.value = v;
+                }
             }
         });
         const opacity = gui.add(this.params, 'opacity', 0, 1);
         opacity.onChange((v) => {
-            for (const child of this.star.children) {
-                child.material.uniforms.opacity.value = v;
+            for (const star of this.stars) {
+                for (const child of star.children) {
+                    child.material.uniforms.opacity.value = v;
+                }
             }
         });
         const refractionIntensity = r.add(this.params, 'scale', 0, 0.1);
         refractionIntensity.onChange((v) => {
-            for (const child of this.star.children) {
-                child.material.uniforms.vScale.value = new THREE.Vector2(v, v);
+            for (const star of this.stars) {
+                for (const child of star.children) {
+                    child.material.uniforms.vScale.value = new THREE.Vector2(v, v);
+                }
             }
         });
-        const anisotropy = gui.add(this.params, 'anisotropy');
-        anisotropy.onChange((v) => {
-            for (const child of this.star.children) {
-                child.renderTarget.texture.anisotropy =  v ? 16 : 1;
+        const fresnel = gui.add(this.params, 'fresnel', 0, 1);
+        fresnel.onChange((v) => {
+            for (const star of this.stars) {
+                for (const child of star.children) {
+                    child.material.uniforms.fresnelMix.value = v;
+                }
+            }
+        });
+        const fresnelBias = gui.add(this.params, 'fresnelBias', 0, 1);
+        fresnelBias.onChange((v) => {
+            for (const star of this.stars) {
+                for (const child of star.children) {
+                    child.material.uniforms.fresnelBias.value = v;
+                }
+            }
+        });
+        const fresnelPow = gui.add(this.params, 'fresnelPow', 0, 10);
+        fresnelPow.onChange((v) => {
+            for (const star of this.stars) {
+                for (const child of star.children) {
+                    child.material.uniforms.fresnelPow.value = v;
+                }
             }
         });
     }
@@ -150,6 +201,8 @@ class App {
 
     buildStar() {
         const obj = new THREE.Object3D();
+
+        obj.position.set(500 - Math.random()*1000, 500 - Math.random()*1000, 500 - Math.random()*1000);
 
         for (let i = 0; i < 10; i++) {
             const particle = new Particle();
@@ -172,29 +225,48 @@ class App {
     }
 
     update() {
-        this.star.rotation.y += Math.PI / 360;
-        this.star.rotation.x += Math.PI / 360;
+        const stars = this.stars.slice();
 
-        const children = this.star.children.slice();
-        children.sort((a, b) => {
-            b.translateY(250);
+        stars.sort((a, b) => {
             const pb = b.getWorldPosition();
-            b.translateY(-250);
             pb.project(this.camera);
-            a.translateY(250);
             const pa = a.getWorldPosition();
-            a.translateY(-250);
             pa.project(this.camera);
             return pb.z - pa.z;
         });
 
-        for (const child of children) {
-            child.visible = false;
+        for (const star of stars) {
+            star.visible = false;
         }
 
-        for (const child of children) {
-            this.renderer.render(this.scene, this.camera, child.renderTarget);
-            child.visible = true;
+        for (const star of stars) {
+            star.rotation.y += Math.PI / 360;
+            star.rotation.x += Math.PI / 360;
+
+            const children = star.children.slice();
+            children.sort((a, b) => {
+                b.translateY(250);
+                const pb = b.getWorldPosition();
+                b.translateY(-250);
+                pb.project(this.camera);
+                a.translateY(250);
+                const pa = a.getWorldPosition();
+                a.translateY(-250);
+                pa.project(this.camera);
+                return pb.z - pa.z;
+            });
+
+            star.visible = true;
+
+            for (const child of children) {
+                child.visible = false;
+            }
+
+            for (const child of children) {
+                this.renderer.render(this.scene, this.camera, child.renderTarget);
+                child.visible = true;
+                child.material.uniforms.offset.value.add(new THREE.Vector2(0.001, 0.001));
+            }
         }
     }
 
@@ -203,23 +275,12 @@ class App {
 
         this.update();
 
-        //this.renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
-        //this.renderer.setScissorTest(false);
-
         this.renderer.render(this.scene, this.camera);
 
-        //const ratio = window.innerWidth/window.innerHeight;
-
-        //this.renderer.setViewport(window.innerWidth * 0.8, window.innerWidth * 0.2 / ratio, window.innerWidth * 0.2, window.innerWidth * 0.2 / ratio);
-        //this.renderer.setScissor(window.innerWidth * 0.8, window.innerWidth * 0.2 / ratio, window.innerWidth * 0.2, window.innerWidth * 0.2 / ratio);
-        //this.renderer.setScissorTest(true);
-
-        //this.renderer.render(this.scene, this.camera);
 
         stats.end();
 
         requestAnimationFrame(this.render);
-
     }
 }
 

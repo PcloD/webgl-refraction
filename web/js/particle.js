@@ -5,10 +5,10 @@ import refractionF from '../shaders/refractionF';
 class Particle extends THREE.Mesh {
 
     constructor() {
-        const geo = new THREE.CylinderBufferGeometry(0, 30, 500, 3, 1, true);
+        const geo = new THREE.CylinderBufferGeometry(0, 30, 500, 30, 30, true);
         geo.translate(0, 250, 0);
 
-        const renderTarget = new THREE.WebGLRenderTarget(1024, 1024);
+        const renderTarget = new THREE.WebGLRenderTarget(512, 512, { depthBuffer: false, stencilBuffer: false });
 
         const mat = new THREE.ShaderMaterial({
             uniforms: {
@@ -20,11 +20,20 @@ class Particle extends THREE.Mesh {
                 emissiveMap: { value: new THREE.TextureLoader().load(bump) },
                 refraction: { value: 0.45 },
                 opacity: { value: 0.9 },
+                offset: { value: new THREE.Vector2(0, 0) },
+                fresnelMix: { value: 1 },
+                fresnelBias: { value: 0.2 },
+                fresnelPow: { value: 5 },
             },
             vertexShader: [
                 'varying vec2 vUv;',
+                'varying vec3 vEye;',
+                'varying vec3 vWorldNormal;',
                 'void main() {',
                 'vUv = uv;',
+                'vec4 p = vec4( position, 1. );',
+                'vEye = normalize( vec3( modelViewMatrix * p ));',
+                'vWorldNormal = normalize( normalMatrix * normal );',
                 'gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );',
                 '}',
             ].join('\n'),
