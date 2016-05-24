@@ -18,7 +18,7 @@ var config = {
     module: {
     	loaders: [
             {
-                test: /\.(jpg|png|gif|ttf|otf|eot|woff|svg)$/,
+                test: /\.(jpg|png|gif|ttf|otf|eot|woff|svg|mp4)$/,
                 loader: 'file?name=[path][name]-[hash].[ext]&context=web'
             },
             {

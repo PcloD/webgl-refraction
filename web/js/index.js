@@ -2,11 +2,16 @@ import html from '../index.html';
 import styles from '../css/style.css';
 import THREE from 'three';
 const scene = require('../textures/checkerboard.png');
+const skyTex = require('../textures/sky.jpg');
 global.THREE = THREE;
 import Particle from './particle';
 require('three/examples/js/controls/OrbitControls');
 import Stats from 'three/examples/js/libs/stats.min';
 const dat = require('exports?dat!three/examples/js/libs/dat.gui.min');
+import audioWave from './audioWave';
+
+const sound = require('../sound.mp4');
+
 
 const stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -28,16 +33,16 @@ class App {
             this.scene.add(this.stars[i]);
         }
 
+        /*
         const geometry = new THREE.BoxBufferGeometry(5000, 5000, 5000);
         this.material = new THREE.MeshBasicMaterial({
             side: THREE.BackSide,
             map: new THREE.TextureLoader().load(scene),
-            precision: 'highp',
         });
         const cube = new THREE.Mesh(geometry, this.material);
         cube.position.set(0, 0, 0);
         this.scene.add(cube);
-
+        */
 
         /*
         const light = new THREE.DirectionalLight(0xffffff);
@@ -77,11 +82,12 @@ class App {
 
         const shadowTexture = new THREE.Texture(canvas);
         shadowTexture.needsUpdate = true;
+        */
 
+        /*
         const skyGeo = new THREE.SphereGeometry(5000, 25, 25);
         this.sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({
-            map: shadowTexture,
-            color: 0xFFFFFF,
+            map: new THREE.TextureLoader().load(skyTex),
         }));
         this.sky.material.side = THREE.BackSide;
         this.scene.add(this.sky);
@@ -90,10 +96,11 @@ class App {
         this.renderer = new THREE.WebGLRenderer({
             canvas: document.getElementById('canvas'),
             antialias: true,
+            stencil: false,
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
 
-        let controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        // let controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
 
         this.render = this.render.bind(this);
         this.resize = this.resize.bind(this);
@@ -101,6 +108,14 @@ class App {
         this.update = this.update.bind(this);
 
         this.bindEvents();
+
+        this.audioReady = false;
+        this.audioWave = new audioWave();
+
+        this.audioWave.inputStream(sound, 2048);
+        this.audioReady = true;
+
+        this.angle = 0;
 
         this.render();
 
@@ -120,26 +135,26 @@ class App {
         const gui = new dat.GUI();
         const color = gui.addColor(this.params, 'color1');
         color.onChange((v) => {
-            for (const child of this.stars[0].children) {
-                child.material.uniforms.emissive.value = new THREE.Color(v);
+            for (const child of this.stars[0].cones) {
+                child.emissive = new THREE.Color(v);
             }
         });
         const color2 = gui.addColor(this.params, 'color2');
         color2.onChange((v) => {
-            for (const child of this.stars[1].children) {
-                child.material.uniforms.emissive.value = new THREE.Color(v);
+            for (const child of this.stars[1].cones) {
+                child.emissive = new THREE.Color(v);
             }
         });
         const color3 = gui.addColor(this.params, 'color3');
         color3.onChange((v) => {
-            for (const child of this.stars[2].children) {
-                child.material.uniforms.emissive.value = new THREE.Color(v);
+            for (const child of this.stars[2].cones) {
+                child.emissive = new THREE.Color(v);
             }
         });
         const color4 = gui.addColor(this.params, 'color4');
         color4.onChange((v) => {
-            for (const child of this.stars[3].children) {
-                child.material.uniforms.emissive.value = new THREE.Color(v);
+            for (const child of this.stars[3].cones) {
+                child.emissive = new THREE.Color(v);
             }
         });
 
@@ -148,7 +163,7 @@ class App {
         const refraction = r.add(this.params, 'intensity', 0, 1);
         refraction.onChange((v) => {
             for (const star of this.stars) {
-                for (const child of star.children) {
+                for (const child of star.cones) {
                     child.material.uniforms.refraction.value = v;
                 }
             }
@@ -156,7 +171,7 @@ class App {
         const opacity = gui.add(this.params, 'opacity', 0, 1);
         opacity.onChange((v) => {
             for (const star of this.stars) {
-                for (const child of star.children) {
+                for (const child of star.cones) {
                     child.material.uniforms.opacity.value = v;
                 }
             }
@@ -164,7 +179,7 @@ class App {
         const refractionIntensity = r.add(this.params, 'scale', 0, 0.1);
         refractionIntensity.onChange((v) => {
             for (const star of this.stars) {
-                for (const child of star.children) {
+                for (const child of star.cones) {
                     child.material.uniforms.vScale.value = new THREE.Vector2(v, v);
                 }
             }
@@ -172,7 +187,7 @@ class App {
         const fresnel = gui.add(this.params, 'fresnel', 0, 1);
         fresnel.onChange((v) => {
             for (const star of this.stars) {
-                for (const child of star.children) {
+                for (const child of star.cones) {
                     child.material.uniforms.fresnelMix.value = v;
                 }
             }
@@ -180,7 +195,7 @@ class App {
         const fresnelBias = gui.add(this.params, 'fresnelBias', 0, 1);
         fresnelBias.onChange((v) => {
             for (const star of this.stars) {
-                for (const child of star.children) {
+                for (const child of star.cones) {
                     child.material.uniforms.fresnelBias.value = v;
                 }
             }
@@ -188,9 +203,15 @@ class App {
         const fresnelPow = gui.add(this.params, 'fresnelPow', 0, 10);
         fresnelPow.onChange((v) => {
             for (const star of this.stars) {
-                for (const child of star.children) {
+                for (const child of star.cones) {
                     child.material.uniforms.fresnelPow.value = v;
                 }
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.keyCode === 13) {
+                this.toggleFullScreen();
             }
         });
     }
@@ -202,29 +223,102 @@ class App {
     buildStar() {
         const obj = new THREE.Object3D();
 
-        obj.position.set(500 - Math.random()*1000, 500 - Math.random()*1000, 500 - Math.random()*1000);
+        obj.cones = [];
+
+        obj.position.set(
+            500 - Math.random() * 1000,
+            500 - Math.random() * 1000,
+            500 - Math.random() * 1000
+        );
 
         for (let i = 0; i < 10; i++) {
             const particle = new Particle();
-            particle.rotation.set(Math.PI * Math.random(), Math.PI * Math.random(), Math.PI * Math.random());
+            particle.rotation.set(
+                Math.PI * Math.random(),
+                Math.PI * Math.random(),
+                Math.PI * Math.random()
+            );
             // particle.camera.position.copy(obj.position);
             // this.scene.add(new THREE.CameraHelper(particle.camera));
             obj.add(particle);
+            obj.cones.push(particle);
         }
 
         return obj;
+    }
+
+    toggleFullScreen() {
+      if (!document.fullscreenElement &&    // alternative standard method
+          !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement ) {  // current working methods
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen();
+        } else if (document.documentElement.msRequestFullscreen) {
+          document.documentElement.msRequestFullscreen();
+        } else if (document.documentElement.mozRequestFullScreen) {
+          document.documentElement.mozRequestFullScreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+          document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
     }
 
     resize() {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
-        for (const child of this.star.children) {
-            child.material.uniforms.resolution.value = new THREE.Vector2(window.innerWidth, window.innerHeight);
+        for (let star of this.stars) {
+            for (const child of star.cones) {
+                child.material.uniforms.resolution.value = new THREE.Vector2(window.innerWidth, window.innerHeight);
+            }
         }
     }
 
     update() {
+        if (this.audioReady) {
+            const wave = this.audioWave.getWave();
+            const audioData = [];
+            const buckets = this.stars.length;
+            for (let i = 0, l = buckets; i < l; i++) {
+                audioData[i] = 0;
+                const length = Math.floor(wave.length / buckets / 2);
+                for (let j = i * length, l2 = (i + 1) * length; j < l2; j++) {
+                    audioData[i] += wave[j];
+                }
+                audioData[i] /= length;
+            }
+            // window.console.log(audioData);
+            let i = 0;
+            for (const star of this.stars) {
+                const v = audioData[i] / 255;
+                star.rotation.y += 10 * v * Math.PI / 360;
+                star.rotation.x += 10 * v * Math.PI / 360;
+                for (const child of star.cones) {
+                    child.scale.setY(0.1 + 0.9 * v);
+                    // child.material.uniforms.refraction.value = 0.65 * v;
+                    child.emissive.offsetHSL(v * 0.001, 0, 0);
+                    child.material.uniforms.emissive.value.copy(child.emissive).multiplyScalar(4 * v);
+                }
+                i++;
+            }
+
+            this.angle -= audioData[0] / 255 * Math.PI / 360;
+            const p = this.camera.position;
+            p.x = 1000 * Math.sin(this.angle);
+            p.z = 1000 * Math.cos(this.angle);
+            this.camera.lookAt(this.scene.position);
+            this.camera.updateProjectionMatrix();
+        }
+
         const stars = this.stars.slice();
 
         stars.sort((a, b) => {
@@ -239,11 +333,9 @@ class App {
             star.visible = false;
         }
 
+        //console.time('first pass');
         for (const star of stars) {
-            star.rotation.y += Math.PI / 360;
-            star.rotation.x += Math.PI / 360;
-
-            const children = star.children.slice();
+            const children = star.cones.slice();
             children.sort((a, b) => {
                 b.translateY(250);
                 const pb = b.getWorldPosition();
@@ -265,9 +357,10 @@ class App {
             for (const child of children) {
                 this.renderer.render(this.scene, this.camera, child.renderTarget);
                 child.visible = true;
-                child.material.uniforms.offset.value.add(new THREE.Vector2(0.001, 0.001));
+                // child.material.uniforms.offset.value.add(new THREE.Vector2(0.001, 0.001));
             }
         }
+        //console.timeEnd('first pass');
     }
 
     render() {

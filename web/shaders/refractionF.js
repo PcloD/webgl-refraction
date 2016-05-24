@@ -1,5 +1,4 @@
-export default `// precision mediump float;
-
+export default `
 uniform sampler2D tex_bump;
 uniform sampler2D tex_scene;
 uniform sampler2D emissiveMap;
@@ -16,6 +15,7 @@ uniform float fresnelPow;
 varying vec2 vUv;
 varying vec3 vEye;
 varying vec3 vWorldNormal;
+//varying float vNdotL;
 
 float Fresnel(const in float NdotL, const in float fresnelBias, const in float fresnelPow)
 
@@ -47,7 +47,7 @@ void main(void)
 
     float fresnel = Fresnel(1.0 - NdotL, fresnelBias, fresnelPow);
 
-    vec3 refractionColor = ( (fresnel * fresnelMix) * texture2D(tex_scene, newUV)).rgb;
+    vec3 refractionColor = ( mix(1.0, fresnel, fresnelMix) * texture2D(tex_scene, newUV)).rgb;
 
     //vec3 refractionColor = vec3(1.0 - fresnel, 1.0 - fresnel, 1.0 - fresnel);
 

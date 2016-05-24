@@ -8,7 +8,7 @@ class Particle extends THREE.Mesh {
         const geo = new THREE.CylinderBufferGeometry(0, 30, 500, 30, 30, true);
         geo.translate(0, 250, 0);
 
-        const renderTarget = new THREE.WebGLRenderTarget(512, 512, { depthBuffer: false, stencilBuffer: false });
+        const renderTarget = new THREE.WebGLRenderTarget(1024, 1024, { depthBuffer: false, stencilBuffer: false });
 
         const mat = new THREE.ShaderMaterial({
             uniforms: {
@@ -27,13 +27,16 @@ class Particle extends THREE.Mesh {
             },
             vertexShader: [
                 'varying vec2 vUv;',
+                '//varying float vNdotL;',
                 'varying vec3 vEye;',
                 'varying vec3 vWorldNormal;',
                 'void main() {',
                 'vUv = uv;',
                 'vec4 p = vec4( position, 1. );',
+                'const vec3 s = vec3( 0.07, 0.07, 1. );',
                 'vEye = normalize( vec3( modelViewMatrix * p ));',
                 'vWorldNormal = normalize( normalMatrix * normal );',
+                '// vNdotL = dot(normalize( (modelViewMatrix * p).xyz ), normalize( normalMatrix * normal ) * s);',
                 'gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );',
                 '}',
             ].join('\n'),
@@ -45,6 +48,7 @@ class Particle extends THREE.Mesh {
 
         this.renderTarget = renderTarget;
         this.material = mat;
+        this.emissive = mat.uniforms.emissive.value.clone();
     }
 }
 
